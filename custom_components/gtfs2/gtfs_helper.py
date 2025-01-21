@@ -26,15 +26,15 @@ from .const import (
     CONF_API_KEY_LOCATION,
     CONF_API_KEY_NAME,
     CONF_ACCEPT_HEADER_PB,
-    DEFAULT_LOCAL_STOP_TIMERANGE, 
+    DEFAULT_LOCAL_STOP_TIMERANGE,
     DEFAULT_LOCAL_STOP_TIMERANGE_HISTORY,
     DEFAULT_LOCAL_STOP_RADIUS,
     DEFAULT_PATH_RT,
     ICON,
     ICONS,
     DOMAIN,
-    TIME_STR_FORMAT
-    )
+    TIME_STR_FORMAT,
+)
 from .gtfs_rt_helper import get_rt_route_trip_statuses, get_gtfs_rt
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,30 +42,41 @@ _LOGGER = logging.getLogger(__name__)
 
 def get_next_departure(self):
     _LOGGER.debug("Get next departure with data: %s", self._data)
-    if check_extracting(self.hass, self._data['gtfs_dir'],self._data['file']):
-        _LOGGER.debug("Cannot get next depurtures on this datasource as still unpacking: %s", self._data["file"])
+    if check_extracting(self.hass, self._data["gtfs_dir"], self._data["file"]):
+        _LOGGER.debug(
+            "Cannot get next depurtures on this datasource as still unpacking: %s",
+            self._data["file"],
+        )
         return {}
 
     """Get next departures from data."""
 
     schedule = self._data["schedule"]
     route_type = self._data["route_type"]
-    
-    # if type 2 (train) then filter on that and use name-like search 
+
+    # if type 2 (train) then filter on that and use name-like search
     if route_type == "2":
         route_type_where = f"route_type in (2,100,101,102,103,104,105,106,107,108, 109,100,111,112,113,114,115,116,117)"
-        start_station_id = str(self._data['origin'])+'%'
-        end_station_id = str(self._data['destination'])+'%'
+        start_station_id = str(self._data["origin"]) + "%"
+        end_station_id = str(self._data["destination"]) + "%"
         start_station_where = f"AND start_station.stop_id in (select stop_id from stops where stop_name like :origin_station_id)"
         end_station_where = f"AND end_station.stop_id in (select stop_id from stops where stop_name like :end_station_id)"
-        _LOGGER.debug("Setting up TRAIN Route for start/end : %s / %s ", start_station_id, end_station_id)
+        _LOGGER.debug(
+            "Setting up TRAIN Route for start/end : %s / %s ",
+            start_station_id,
+            end_station_id,
+        )
     else:
         route_type_where = "1=1"
-        start_station_id = self._data['origin'].split(': ')[0]
-        end_station_id = self._data['destination'].split(': ')[0]
+        start_station_id = self._data["origin"].split(": ")[0]
+        end_station_id = self._data["destination"].split(": ")[0]
         start_station_where = f"AND start_station.stop_id = :origin_station_id"
         end_station_where = f"AND end_station.stop_id = :end_station_id"
-        _LOGGER.debug("Setting up Route for start/end : %s / %s ", start_station_id, end_station_id)
+        _LOGGER.debug(
+            "Setting up Route for start/end : %s / %s ",
+            start_station_id,
+            end_station_id,
+        )
     offset = self._data["offset"]
     include_tomorrow = self._data["include_tomorrow"]
     now = dt_util.now().replace(tzinfo=None) + datetime.timedelta(minutes=offset)
@@ -76,7 +87,9 @@ def get_next_departure(self):
     yesterday = now - datetime.timedelta(days=1)
     yesterday_date = yesterday.strftime(dt_util.DATE_STR_FORMAT)
     tomorrow = now + datetime.timedelta(days=1)
-    tomorrow_local_tz = dt_util.now() + datetime.timedelta(minutes=offset) + datetime.timedelta(days=1) 
+    tomorrow_local_tz = (
+        dt_util.now() + datetime.timedelta(minutes=offset) + datetime.timedelta(days=1)
+    )
     tomorrow_date = tomorrow.strftime(dt_util.DATE_STR_FORMAT)
     tomorrow_date_local_tz = tomorrow_local_tz.strftime(dt_util.DATE_STR_FORMAT)
 
@@ -265,14 +278,17 @@ def get_next_departure(self):
         if datetime.datetime.strptime(key, "%Y-%m-%d %H:%M:%S") > now:
             item = timetable[key]
             _LOGGER.info(
-                "Departure(s) found for station %s @ %s -> %s", start_station_id, key, item
+                "Departure(s) found for station %s @ %s -> %s",
+                start_station_id,
+                key,
+                item,
             )
             break
     _LOGGER.debug("item: %s", item)
-    
+
     if item == {}:
-        data_returned = {        
-        "gtfs_updated_at": dt_util.utcnow().isoformat(),
+        data_returned = {
+            "gtfs_updated_at": dt_util.utcnow().isoformat(),
         }
         _LOGGER.info("No items found in gtfs")
         return {}
@@ -283,63 +299,91 @@ def get_next_departure(self):
         timezone = "UTC"
     else:
         timezone = dt_util.get_time_zone(self.hass.config.time_zone)
-        _LOGGER.debug("Timezone HA: %s",timezone)
-    _LOGGER.debug("Default timezone: %s",timezone)
-    _LOGGER.debug("Agency timezone: %s",item["agency_timezone"])
-    _LOGGER.debug("Origin stop timezone: %s",item["origin_stop_timezone"])
-    _LOGGER.debug("Dest stop timezone: %s",item["dest_stop_timezone"])
+        _LOGGER.debug("Timezone HA: %s", timezone)
+    _LOGGER.debug("Default timezone: %s", timezone)
+    _LOGGER.debug("Agency timezone: %s", item["agency_timezone"])
+    _LOGGER.debug("Origin stop timezone: %s", item["origin_stop_timezone"])
+    _LOGGER.debug("Dest stop timezone: %s", item["dest_stop_timezone"])
     if item["agency_timezone"] is not None:
-        _LOGGER.debug("Setting Orig & Dest TZ based on Agency: %s",item["agency_timezone"])
+        _LOGGER.debug(
+            "Setting Orig & Dest TZ based on Agency: %s", item["agency_timezone"]
+        )
         timezone = dt_util.get_time_zone(item["agency_timezone"])
-        timezone_dest = dt_util.get_time_zone(item["agency_timezone"])  
-    elif item["origin_stop_timezone"] is not None:    
-        _LOGGER.debug("Setting Orig & Dest TZ based on origin stop: %s",item["origin_stop_timezone"])
+        timezone_dest = dt_util.get_time_zone(item["agency_timezone"])
+    elif item["origin_stop_timezone"] is not None:
+        _LOGGER.debug(
+            "Setting Orig & Dest TZ based on origin stop: %s",
+            item["origin_stop_timezone"],
+        )
         timezone = dt_util.get_time_zone(item["origin_stop_timezone"])
-        timezone_dest = dt_util.get_time_zone(item["orig_stop_timezone"]) 
+        timezone_dest = dt_util.get_time_zone(item["orig_stop_timezone"])
     if item["dest_stop_timezone"] is not None and item["agency_timezone"] is None:
-        _LOGGER.debug("Setting Dest TZ based on dest stop: %s",item["dest_stop_timezone"])
-        timezone_dest = dt_util.get_time_zone(item["dest_stop_timezone"])  
+        _LOGGER.debug(
+            "Setting Dest TZ based on dest stop: %s", item["dest_stop_timezone"]
+        )
+        timezone_dest = dt_util.get_time_zone(item["dest_stop_timezone"])
     else:
         timezone_dest = timezone
-    _LOGGER.debug("Defined orig timezone: %s, dest timezone: %s",timezone,timezone_dest)
-    _LOGGER.debug("Defined now incl. offset (if configured): %s",now_local_tz)
+    _LOGGER.debug(
+        "Defined orig timezone: %s, dest timezone: %s", timezone, timezone_dest
+    )
+    _LOGGER.debug("Defined now incl. offset (if configured): %s", now_local_tz)
 
     # create upcoming timetable, use timezone before resetting to UTC and reset 'item' to match with timezone
     timetable_remaining = []
     ix = 0
-    item={}
+    item = {}
     for key in sorted(timetable.keys()):
-        upcoming = datetime.datetime.strptime(key, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone)
-        _LOGGER.debug ("Upcoming_departure_in_defined_timezone: %s, Now_in_defined_timezone_plus_offset: %s, key: %s, ix: %s", upcoming, now_local_tz, key, ix)
+        upcoming = datetime.datetime.strptime(key, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=timezone
+        )
+        _LOGGER.debug(
+            "Upcoming_departure_in_defined_timezone: %s, Now_in_defined_timezone_plus_offset: %s, key: %s, ix: %s",
+            upcoming,
+            now_local_tz,
+            key,
+            ix,
+        )
         if upcoming > now_local_tz:
-            if ix == 0 :
+            if ix == 0:
                 _LOGGER.debug("Resetting item")
                 item = timetable[key]
                 ix = ix + 1
             _LOGGER.debug("Adding departure: %s", upcoming)
             timetable_remaining.append(dt_util.as_utc(upcoming).isoformat())
-    _LOGGER.debug("item reset: %s", item)        
+    _LOGGER.debug("item reset: %s", item)
     _LOGGER.debug(
         "Timetable Remaining Departures on this Start/Stop: %s", timetable_remaining
     )
     if item == {}:
-        data_returned = {        
-        "gtfs_updated_at": dt_util.utcnow().isoformat(),
+        data_returned = {
+            "gtfs_updated_at": dt_util.utcnow().isoformat(),
         }
         _LOGGER.info("No items found in gtfs")
         return {}
-    
+
     # create upcoming timetable with line info and headsign
     timetable_remaining_line = []
     timetable_remaining_headsign = []
     for key, value in sorted(timetable.items()):
-        upcoming = datetime.datetime.strptime(key, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone)
+        upcoming = datetime.datetime.strptime(key, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=timezone
+        )
         if upcoming > now_local_tz:
             timetable_remaining_line.append(
-                str(dt_util.as_utc(upcoming).isoformat()) + " (" + str(value["route_short_name"]) +  str( ("/" + value["route_long_name"])  if value["route_long_name"] else "") + ")"
+                str(dt_util.as_utc(upcoming).isoformat())
+                + " ("
+                + str(value["route_short_name"])
+                + str(
+                    ("/" + value["route_long_name"]) if value["route_long_name"] else ""
+                )
+                + ")"
             )
             timetable_remaining_headsign.append(
-                str(dt_util.as_utc(upcoming).isoformat()) + " (" + str(value["trip_headsign"]) + ")"
+                str(dt_util.as_utc(upcoming).isoformat())
+                + " ("
+                + str(value["trip_headsign"])
+                + ")"
             )
     _LOGGER.debug(
         "Timetable Remaining Departures on this Start/Stop, per line: %s",
@@ -353,17 +397,27 @@ def get_next_departure(self):
     # Format arrival and departure dates and times, accounting for the
     # possibility of times crossing over midnight.
     _tomorrow = False
-    if item.get("tomorrow") == 1 or item.get("calendar_date") > now_date_local_tz or item.get("origin_depart_date") != '1970-01-01' :
+    if (
+        item.get("tomorrow") == 1
+        or item.get("calendar_date") > now_date_local_tz
+        or item.get("origin_depart_date") != "1970-01-01"
+    ):
         _tomorrow = True
-    _LOGGER.debug("Time is 'tomorrow': %s ,based on -> tomorrow_val: %s, calendar_date val: %s, now_date_local_tz val: %s", _tomorrow, item.get("tomorrow"),item.get("calendar_date"), now_date_local_tz)        
+    _LOGGER.debug(
+        "Time is 'tomorrow': %s ,based on -> tomorrow_val: %s, calendar_date val: %s, now_date_local_tz val: %s",
+        _tomorrow,
+        item.get("tomorrow"),
+        item.get("calendar_date"),
+        now_date_local_tz,
+    )
     origin_arrival = now
     dest_arrival = now
     origin_depart_time = f"{now_date_local_tz} {item['origin_depart_time']}"
-    if _tomorrow and now_time > item['origin_depart_time']:
+    if _tomorrow and now_time > item["origin_depart_time"]:
         origin_arrival = tomorrow
         dest_arrival = tomorrow
         origin_depart_time = f"{tomorrow_date} {item['origin_depart_time']}"
-    
+
     if item["origin_arrival_time"] > item["origin_depart_time"]:
         origin_arrival -= datetime.timedelta(days=1)
     origin_arrival_time = (
@@ -372,7 +426,7 @@ def get_next_departure(self):
     )
 
     if item["dest_arrival_time"] < item["origin_depart_time"]:
-        dest_arrival += datetime.timedelta(days=1)   
+        dest_arrival += datetime.timedelta(days=1)
     dest_arrival_time = (
         f"{dest_arrival.strftime(dt_util.DATE_STR_FORMAT)} {item['dest_arrival_time']}"
     )
@@ -383,16 +437,26 @@ def get_next_departure(self):
     dest_depart_time = (
         f"{dest_depart.strftime(dt_util.DATE_STR_FORMAT)} {item['dest_depart_time']}"
     )
- 
+
     _LOGGER.debug("Orig depart time: %s", origin_depart_time)
-    
+
     depart_time = dt_util.parse_datetime(origin_depart_time).replace(tzinfo=timezone)
-    arrival_time = dt_util.parse_datetime(dest_arrival_time).replace(tzinfo=timezone_dest)
-    origin_arrival_time = dt_util.as_utc(datetime.datetime.strptime(origin_arrival_time, "%Y-%m-%d %H:%M:%S")).isoformat()
-    origin_depart_time = dt_util.as_utc(datetime.datetime.strptime(origin_depart_time, "%Y-%m-%d %H:%M:%S")).isoformat()
-    dest_arrival_time = dt_util.as_utc(datetime.datetime.strptime(dest_arrival_time, "%Y-%m-%d %H:%M:%S")).isoformat()
-    dest_depart_time = dt_util.as_utc(datetime.datetime.strptime(dest_depart_time, "%Y-%m-%d %H:%M:%S")).isoformat()
-    
+    arrival_time = dt_util.parse_datetime(dest_arrival_time).replace(
+        tzinfo=timezone_dest
+    )
+    origin_arrival_time = dt_util.as_utc(
+        datetime.datetime.strptime(origin_arrival_time, "%Y-%m-%d %H:%M:%S")
+    ).isoformat()
+    origin_depart_time = dt_util.as_utc(
+        datetime.datetime.strptime(origin_depart_time, "%Y-%m-%d %H:%M:%S")
+    ).isoformat()
+    dest_arrival_time = dt_util.as_utc(
+        datetime.datetime.strptime(dest_arrival_time, "%Y-%m-%d %H:%M:%S")
+    ).isoformat()
+    dest_depart_time = dt_util.as_utc(
+        datetime.datetime.strptime(dest_depart_time, "%Y-%m-%d %H:%M:%S")
+    ).isoformat()
+
     origin_stop_time = {
         "Arrival Time": origin_arrival_time,
         "Departure Time": origin_depart_time,
@@ -414,7 +478,7 @@ def get_next_departure(self):
         "Sequence": item["dest_stop_sequence"],
         "Timepoint": item["dest_stop_timepoint"],
     }
-    
+
     data_returned = {
         "trip_id": item["trip_id"],
         "route_id": item["route_id"],
@@ -435,8 +499,9 @@ def get_next_departure(self):
         "next_departures_lines": timetable_remaining_line,
         "next_departures_headsign": timetable_remaining_headsign,
     }
-    
+
     return data_returned
+
 
 def get_gtfs(hass, path, data, update=False):
     _LOGGER.debug("Getting gtfs with data: %s", data)
@@ -446,22 +511,31 @@ def get_gtfs(hass, path, data, update=False):
     filename = data["file"]
     url = data["url"]
     if data.get(CONF_API_KEY_LOCATION, None) == "query_string":
-      if data.get(CONF_API_KEY, None):
-        url = url + "?" + data[CONF_API_KEY_NAME] + "=" + data[CONF_API_KEY]
+        if data.get(CONF_API_KEY, None):
+            url = url + "?" + data[CONF_API_KEY_NAME] + "=" + data[CONF_API_KEY]
     if data.get(CONF_API_KEY_LOCATION, None) == "header":
-      if data.get(CONF_API_KEY, None):
-        _headers = {data[CONF_API_KEY_NAME]: data[CONF_API_KEY]}
+        if data.get(CONF_API_KEY, None):
+            _headers = {data[CONF_API_KEY_NAME]: data[CONF_API_KEY]}
     file = data["file"] + ".zip"
     sqlite = data["file"] + ".sqlite"
     check_source_dates = data.get("check_source_dates", False)
     journal = os.path.join(gtfs_dir, filename + ".sqlite-journal")
-    if check_extracting(hass, gtfs_dir,filename) and not update :
+    if check_extracting(hass, gtfs_dir, filename) and not update:
         _LOGGER.debug("Cannot use this datasource as still unpacking: %s", filename)
         return "extracting"
-    if update and data["extract_from"] == "url" and os.path.exists(os.path.join(gtfs_dir, file)):
+    if (
+        update
+        and data["extract_from"] == "url"
+        and os.path.exists(os.path.join(gtfs_dir, file))
+    ):
         remove_datasource(hass, path, filename, True)
-    if update and data["extract_from"] == "zip" and os.path.exists(os.path.join(gtfs_dir, file)) and os.path.exists(os.path.join(gtfs_dir, sqlite)):
-        os.remove(os.path.join(gtfs_dir, sqlite))      
+    if (
+        update
+        and data["extract_from"] == "zip"
+        and os.path.exists(os.path.join(gtfs_dir, file))
+        and os.path.exists(os.path.join(gtfs_dir, sqlite))
+    ):
+        os.remove(os.path.join(gtfs_dir, sqlite))
     if data["extract_from"] == "zip":
         if not os.path.exists(os.path.join(gtfs_dir, file)):
             _LOGGER.error("The given GTFS zipfile was not found")
@@ -469,117 +543,152 @@ def get_gtfs(hass, path, data, update=False):
     if data["extract_from"] == "url":
         if not os.path.exists(os.path.join(gtfs_dir, file)):
             try:
-                r = requests.get(url,headers=_headers, allow_redirects=True)
+                r = requests.get(url, headers=_headers, allow_redirects=True)
                 open(os.path.join(gtfs_dir, file), "wb").write(r.content)
             except Exception as ex:  # pylint: disable=broad-except
                 _LOGGER.error("The given URL or GTFS data file/folder was not found")
-                return "no_data_file"                
-    
+                return "no_data_file"
+
     # if update (servicecall) then check if new file does not only have future dates
     if check_source_dates:
         if update and not check_calendar_dates_from_zip(gtfs_dir, file):
-            _LOGGER.info('New file contains only dates in the future, extracting terminated')
+            _LOGGER.info(
+                "New file contains only dates in the future, extracting terminated"
+            )
             return
-    
-    (gtfs_root, _) = os.path.splitext(file)    
+
+    (gtfs_root, _) = os.path.splitext(file)
     sqlite_file = f"{gtfs_root}.sqlite?check_same_thread=False"
-    joined_path = os.path.join(gtfs_dir, sqlite_file)  
+    joined_path = os.path.join(gtfs_dir, sqlite_file)
 
     gtfs = pygtfs.Schedule(joined_path)
-   
-    if not gtfs.feeds: 
+
+    if not gtfs.feeds:
         if data.get("clean_feed_info", False):
-            extract = Process(target=extract_from_zip, args = (hass, gtfs,gtfs_dir,file,['shapes.txt','transfers.txt','feed_info.txt']))
-        else: 
-            extract = Process(target=extract_from_zip, args = (hass, gtfs,gtfs_dir,file,['shapes.txt','transfers.txt']))
+            extract = Process(
+                target=extract_from_zip,
+                args=(
+                    hass,
+                    gtfs,
+                    gtfs_dir,
+                    file,
+                    ["shapes.txt", "transfers.txt", "feed_info.txt"],
+                ),
+            )
+        else:
+            extract = Process(
+                target=extract_from_zip,
+                args=(hass, gtfs, gtfs_dir, file, ["shapes.txt", "transfers.txt"]),
+            )
         extract.start()
         extract.join()
         _LOGGER.info("Exiting main after start subprocess for unpacking: %s", file)
         return "extracting"
     return gtfs
 
+
 def extract_from_zip(hass, gtfs, gtfs_dir, file, remove_file):
     _LOGGER.debug("Extracting gtfs file: %s", file)
-    # first remove shapes from zip to avoid possibly very large db 
-    clean = remove_from_zip(remove_file,gtfs_dir, file[:-4])
+    # first remove shapes from zip to avoid possibly very large db
+    clean = remove_from_zip(remove_file, gtfs_dir, file[:-4])
     if os.fork() != 0:
         return
     pygtfs.append_feed(gtfs, os.path.join(gtfs_dir, file))
     check_datasource_index(hass, gtfs, gtfs_dir, file[:-4])
-    
-def check_calendar_dates_from_zip(gtfs_dir,file):
+
+
+def check_calendar_dates_from_zip(gtfs_dir, file):
     _LOGGER.debug("Checking if file contains only future data: %s ", file)
     filename = os.path.join(gtfs_dir, file)
     # Rename existing sqlite if existing (i.e. in case of a fresh install)
     if os.path.exists(os.path.join(gtfs_dir, file[:-4] + ".sqlite")):
-        os.rename (os.path.join(gtfs_dir, file[:-4] + '.sqlite'), os.path.join(gtfs_dir, file[:-4] + '.sqlite_current'))
-    #Load the ZIP archive
-    zin = zipfile.ZipFile (f"{os.path.join(gtfs_dir, filename)}", 'r')
-    check_list=[]
+        os.rename(
+            os.path.join(gtfs_dir, file[:-4] + ".sqlite"),
+            os.path.join(gtfs_dir, file[:-4] + ".sqlite_current"),
+        )
+    # Load the ZIP archive
+    zin = zipfile.ZipFile(f"{os.path.join(gtfs_dir, filename)}", "r")
+    check_list = []
     try:
         for item in zin.infolist():
-            if item.filename[0:8] == 'calendar' :
-                if item.filename == 'calendar.txt':
-                    column = 'start_date'
+            if item.filename[0:8] == "calendar":
+                if item.filename == "calendar.txt":
+                    column = "start_date"
                 else:
-                    column = 'date'
+                    column = "date"
                 with open(zin.extract(item.filename)) as f:
-                    header = f.readline().strip('\n')   #
-                    data = f.readlines() 
-                    index =header.replace('"','').split(',').index(column)           
+                    header = f.readline().strip("\n")  #
+                    data = f.readlines()
+                    index = header.replace('"', "").split(",").index(column)
                     list = []
                     for line in data:
-                        list.append(line.split(',')[index])
+                        list.append(line.split(",")[index])
                     check_list.append(min(list))
-        min_date = datetime.datetime.strptime(min(check_list),"%Y%m%d")
-        _LOGGER.debug("Youngest calender date from new files: %s, is: %s", check_list, min_date)
-        if min_date > datetime.datetime.now()  :
+        min_date = datetime.datetime.strptime(min(check_list), "%Y%m%d")
+        _LOGGER.debug(
+            "Youngest calender date from new files: %s, is: %s", check_list, min_date
+        )
+        if min_date > datetime.datetime.now():
             _LOGGER.info("New file contains only dates in the future, keeping current")
             if os.path.exists(os.path.join(gtfs_dir, file[:-4] + ".sqlite")):
                 os.remove(os.path.join(gtfs_dir, file[:-4] + ".sqlite"))
-            os.rename (os.path.join(gtfs_dir, file[:-4] + '.sqlite_current'), os.path.join(gtfs_dir, file[:-4] + '.sqlite'))
+            os.rename(
+                os.path.join(gtfs_dir, file[:-4] + ".sqlite_current"),
+                os.path.join(gtfs_dir, file[:-4] + ".sqlite"),
+            )
             return False
     except Exception as ex:
-        _LOGGER.error("Error getting earliest dates from zip, continuing with extract, error: %s", ex)
+        _LOGGER.error(
+            "Error getting earliest dates from zip, continuing with extract, error: %s",
+            ex,
+        )
         _LOGGER.debug(f"Removing/restoring sqlite after error")
         if os.path.exists(os.path.join(gtfs_dir, file[:-4] + ".sqlite")):
             os.remove(os.path.join(gtfs_dir, file[:-4] + ".sqlite"))
         if os.path.exists(os.path.join(gtfs_dir, file[:-4] + ".sqlite")):
-            os.rename (os.path.join(gtfs_dir, file[:-4] + '.sqlite'), os.path.join(gtfs_dir, file[:-4] + '.sqlite_current'))
+            os.rename(
+                os.path.join(gtfs_dir, file[:-4] + ".sqlite"),
+                os.path.join(gtfs_dir, file[:-4] + ".sqlite_current"),
+            )
         return False
-    _LOGGER.debug(f"New file is not containing only newer dates, removing current/copied sqlite")    
+    _LOGGER.debug(
+        f"New file is not containing only newer dates, removing current/copied sqlite"
+    )
     if os.path.exists(os.path.join(gtfs_dir, file[:-4] + ".sqlite_current")):
         os.remove(os.path.join(gtfs_dir, file[:-4] + ".sqlite_current"))
     return True
 
-def remove_from_zip(delmelist,gtfs_dir,file):
+
+def remove_from_zip(delmelist, gtfs_dir, file):
     _LOGGER.debug("Removing data: %s , from zipfile: %s", delmelist, file)
     tempfile = file + "_temp.zip"
     tempfile_out = file + "_temp_out.zip"
     filename = file + ".zip"
-    os.rename (os.path.join(gtfs_dir, filename), os.path.join(gtfs_dir, tempfile))
+    os.rename(os.path.join(gtfs_dir, filename), os.path.join(gtfs_dir, tempfile))
     # Load the ZIP archive
-    try: 
-        zin = zipfile.ZipFile (f"{os.path.join(gtfs_dir, tempfile)}", 'r')
-        zout = zipfile.ZipFile (f"{os.path.join(gtfs_dir, tempfile_out)}", 'w')
+    try:
+        zin = zipfile.ZipFile(f"{os.path.join(gtfs_dir, tempfile)}", "r")
+        zout = zipfile.ZipFile(f"{os.path.join(gtfs_dir, tempfile_out)}", "w")
         for item in zin.infolist():
             buffer = zin.read(item.filename)
-            if (item.filename not in delmelist):
+            if item.filename not in delmelist:
                 zout.writestr(item, buffer)
         zout.close()
         zin.close()
-        os.rename(os.path.join(gtfs_dir, tempfile_out), os.path.join(gtfs_dir, filename))
-        os.remove(os.path.join(gtfs_dir, tempfile)) 
+        os.rename(
+            os.path.join(gtfs_dir, tempfile_out), os.path.join(gtfs_dir, filename)
+        )
+        os.remove(os.path.join(gtfs_dir, tempfile))
     except Exception as ex:  # pylint: disable=broad-except
-        print('Something went wrong with the zipfile... : ', ex)
-        return     
+        print("Something went wrong with the zipfile... : ", ex)
+        return
 
 
 def get_route_list(schedule, data):
     _LOGGER.debug("Getting routes with data: %s", data)
     route_type_where = ""
     agency_where = ""
-    if data["agency"].split(': ')[0] != "0":
+    if data["agency"].split(": ")[0] != "0":
         agency_where = f"and r.agency_id = '{data['agency'].split(': ')[0]}'"
     if data["route_type"] != "99":
         route_type_where = f"and route_type = {data['route_type']}"
@@ -602,10 +711,21 @@ def get_route_list(schedule, data):
         row = row_cursor._asdict()
         routes_list.append(list(row_cursor))
     for x in routes_list:
-        val = str(x[0]) + "#" + str(x[1]) + ": (" + str(x[2]) + " - " + str(x[3]) + ") " + str(x[4])
+        val = (
+            str(x[0])
+            + "#"
+            + str(x[1])
+            + ": ("
+            + str(x[2])
+            + " - "
+            + str(x[3])
+            + ") "
+            + str(x[4])
+        )
         routes.append(val)
     _LOGGER.debug(f"routes: {routes}")
     return routes
+
 
 def get_stop_list(schedule, route_id, direction):
     _LOGGER.debug("Getting stops list for route: %s", route_id)
@@ -628,10 +748,11 @@ def get_stop_list(schedule, route_id, direction):
         row = row_cursor._asdict()
         stops_list.append(list(row_cursor))
     for x in stops_list:
-        val = x[0] + ": " + x[1] + ' (' + str(x[2]) + ')'
+        val = x[0] + ": " + x[1] + " (" + str(x[2]) + ")"
         stops.append(val)
     _LOGGER.debug(f"stops: {stops}")
-    return stops 
+    return stops
+
 
 def get_agency_list(schedule, data):
     _LOGGER.debug("Getting agencies with data: %s", data)
@@ -655,50 +776,54 @@ def get_agency_list(schedule, data):
     _LOGGER.debug(f"agencies: {agencies}")
     return agencies
 
+
 async def get_datasources(hass, path) -> dict[str]:
     _LOGGER.debug(f"Getting datasources for path: {path}")
     gtfs_dir = hass.config.path(path)
     os.makedirs(gtfs_dir, exist_ok=True)
-    files = await hass.async_add_executor_job(
-            os.listdir, gtfs_dir)
+    files = await hass.async_add_executor_job(os.listdir, gtfs_dir)
     datasources = []
     for file in files:
         if file.endswith(".sqlite"):
-            datasources.append(file.split(".")[0])        
+            datasources.append(file.split(".")[0])
     _LOGGER.debug(f"Datasources in folder: {datasources}")
     return datasources
+
 
 def remove_datasource(hass, path, filename, include_sqlite):
     gtfs_dir = hass.config.path(path)
     _LOGGER.info(f"Removing datasource: {os.path.join(gtfs_dir, filename)}.*")
     if include_sqlite and os.path.exists(os.path.join(gtfs_dir, filename + ".sqlite")):
         os.remove(os.path.join(gtfs_dir, filename + ".sqlite"))
-    if os.path.exists(os.path.join(gtfs_dir, filename + "_temp.zip")):     
+    if os.path.exists(os.path.join(gtfs_dir, filename + "_temp.zip")):
         os.remove(os.path.join(gtfs_dir, filename + "_temp.zip"))
-    if os.path.exists(os.path.join(gtfs_dir, filename + "_temp_out.zip")):        
+    if os.path.exists(os.path.join(gtfs_dir, filename + "_temp_out.zip")):
         os.remove(os.path.join(gtfs_dir, filename + "_temp_out.zip"))
-    if os.path.exists(os.path.join(gtfs_dir, filename + ".sqlite-journal")):        
+    if os.path.exists(os.path.join(gtfs_dir, filename + ".sqlite-journal")):
         os.remove(os.path.join(gtfs_dir, filename + ".sqlite-journal"))
-    if os.path.exists(os.path.join(gtfs_dir, filename + ".zip")):        
-        os.remove(os.path.join(gtfs_dir, filename + ".zip"))        
+    if os.path.exists(os.path.join(gtfs_dir, filename + ".zip")):
+        os.remove(os.path.join(gtfs_dir, filename + ".zip"))
     return "removed"
-    
-def check_extracting(hass, gtfs_dir,file):
+
+
+def check_extracting(hass, gtfs_dir, file):
     _LOGGER.debug(f"Checking if extracting: %s", file)
     gtfs_dir = hass.config.path(gtfs_dir)
     filename = file
     journal = os.path.join(gtfs_dir, filename + ".sqlite-journal")
     tempzip = os.path.join(gtfs_dir, filename + "_temp.zip")
-    if os.path.exists(journal)  or os.path.exists(tempzip):
+    if os.path.exists(journal) or os.path.exists(tempzip):
         _LOGGER.debug("Extracting: yes")
         return True
-    return False    
+    return False
 
 
 def check_datasource_index(hass, schedule, gtfs_dir, file):
     _LOGGER.debug("Check datasource index for file: %s", file)
-    if check_extracting(hass, gtfs_dir,file):
-        _LOGGER.warning("Cannot check indexes on this datasource as still unpacking: %s", file)
+    if check_extracting(hass, gtfs_dir, file):
+        _LOGGER.warning(
+            "Cannot check indexes on this datasource as still unpacking: %s", file
+        )
         return
     sql_index_1 = f"""
     SELECT count(*) as checkidx
@@ -729,7 +854,7 @@ def check_datasource_index(hass, schedule, gtfs_dir, file):
     FROM sqlite_master
     WHERE
     type= 'index' and tbl_name = 'routes' and name like '%route_type%';
-    """    
+    """
     sql_add_index_1 = f"""
     create index gtfs2_stop_times_trip_id on stop_times(trip_id)
     """
@@ -741,73 +866,74 @@ def check_datasource_index(hass, schedule, gtfs_dir, file):
     """
     sql_add_index_4 = f"""
     create index gtfs2_stops_stop_name on stops(stop_name)
-    """    
+    """
     sql_add_index_5 = f"""
     create index gtfs2_routes_route_type on routes(route_type)
-    """      
+    """
     result_1a = schedule.engine.connect().execute(
         text(sql_index_1),
         {"q": "q"},
     )
     for row_cursor in result_1a:
         _LOGGER.debug("IDX result1: %s", row_cursor._asdict())
-        if row_cursor._asdict()['checkidx'] == 0:
+        if row_cursor._asdict()["checkidx"] == 0:
             _LOGGER.warning("Adding index 1 to improve performance")
             result_1b = schedule.engine.connect().execute(
-            text(sql_add_index_1),
-            {"q": "q"},
-            )        
-        
+                text(sql_add_index_1),
+                {"q": "q"},
+            )
+
     result_2a = schedule.engine.connect().execute(
         text(sql_index_2),
         {"q": "q"},
     )
     for row_cursor in result_2a:
         _LOGGER.debug("IDX result2: %s", row_cursor._asdict())
-        if row_cursor._asdict()['checkidx'] == 0:
+        if row_cursor._asdict()["checkidx"] == 0:
             _LOGGER.warning("Adding index 2 to improve performance")
             result_2b = schedule.engine.connect().execute(
-            text(sql_add_index_2),
-            {"q": "q"},
+                text(sql_add_index_2),
+                {"q": "q"},
             )
-            
+
     result_3a = schedule.engine.connect().execute(
         text(sql_index_3),
         {"q": "q"},
     )
     for row_cursor in result_3a:
         _LOGGER.debug("IDX result3: %s", row_cursor._asdict())
-        if row_cursor._asdict()['checkidx'] == 0:
+        if row_cursor._asdict()["checkidx"] == 0:
             _LOGGER.warning("Adding index 3 to improve performance")
             result_3b = schedule.engine.connect().execute(
-            text(sql_add_index_3),
-            {"q": "q"},
-            )    
+                text(sql_add_index_3),
+                {"q": "q"},
+            )
     result_4a = schedule.engine.connect().execute(
         text(sql_index_4),
         {"q": "q"},
     )
     for row_cursor in result_4a:
         _LOGGER.debug("IDX result4: %s", row_cursor._asdict())
-        if row_cursor._asdict()['checkidx'] == 0:
+        if row_cursor._asdict()["checkidx"] == 0:
             _LOGGER.warning("Adding index 4 to improve performance")
             result_4b = schedule.engine.connect().execute(
-            text(sql_add_index_4),
-            {"q": "q"},
-            )  
+                text(sql_add_index_4),
+                {"q": "q"},
+            )
     result_5a = schedule.engine.connect().execute(
         text(sql_index_5),
-        {"q": "q"},  
+        {"q": "q"},
     )
     for row_cursor in result_5a:
         _LOGGER.debug("IDX result5: %s", row_cursor._asdict())
-        if row_cursor._asdict()['checkidx'] == 0:
+        if row_cursor._asdict()["checkidx"] == 0:
             _LOGGER.warning("Adding index 5 to improve performance")
             result_5b = schedule.engine.connect().execute(
-            text(sql_add_index_5),
-            {"q": "q"},
-            )                 
-            
+                text(sql_add_index_5),
+                {"q": "q"},
+            )
+
+
 def create_trip_geojson(self):
     # not in use, awaiting geojson in HA-core to cover this type of geometry
     _LOGGER.debug("Create geojson with data: %s", self._data)
@@ -835,70 +961,99 @@ def create_trip_geojson(self):
         coordinate.append(x[2])
         coordinate.append(x[1])
         coordinates.append(coordinate)
-    self.geojson = {"features": [{"geometry": {"coordinates": coordinates, "type": "LineString"}, "properties": {"id": self._trip_id, "title": self._trip_id}, "type": "Feature"}], "type": "FeatureCollection"}    
+    self.geojson = {
+        "features": [
+            {
+                "geometry": {"coordinates": coordinates, "type": "LineString"},
+                "properties": {"id": self._trip_id, "title": self._trip_id},
+                "type": "Feature",
+            }
+        ],
+        "type": "FeatureCollection",
+    }
     _LOGGER.debug("Geojson output: %s", json.dumps(self.geojson))
     return None
-    
+
+
 def get_local_stop_list(hass, schedule, data):
     _LOGGER.debug("Getting local stops list with data: %s", data)
-    device_tracker = hass.states.get(data['device_tracker_id'])
+    device_tracker = hass.states.get(data["device_tracker_id"])
     latitude = device_tracker.attributes.get("latitude", None)
-    longitude = device_tracker.attributes.get("longitude", None) 
+    longitude = device_tracker.attributes.get("longitude", None)
     radius = data.get("radius", DEFAULT_LOCAL_STOP_RADIUS) / 111111
     sql_query = f"""
         SELECT stop.stop_id, stop.stop_name
         FROM stops stop
         where abs(stop.stop_lat - :latitude) < :radius and abs(stop.stop_lon - :longitude) < :radius
-        """  
+        """
     result = schedule.engine.connect().execute(
         text(sql_query),
-        {
-            "latitude": latitude,
-            "longitude": longitude,
-            "radius": radius
-        },
-    )   
+        {"latitude": latitude, "longitude": longitude, "radius": radius},
+    )
     rowcount = 0
     for row_cursor in result:
         rowcount += 1
     _LOGGER.debug("Local stops list output: %s", rowcount)
     return rowcount
-        
+
 
 def get_local_stops_next_departures(self):
     _LOGGER.debug("Get local stop departure with data: %s", self._data)
-    if check_extracting(self.hass, self._data['gtfs_dir'],self._data['file']):
-        _LOGGER.warning("Cannot get next depurtures on this datasource as still unpacking: %s", self._data["file"])
+    if check_extracting(self.hass, self._data["gtfs_dir"], self._data["file"]):
+        _LOGGER.warning(
+            "Cannot get next depurtures on this datasource as still unpacking: %s",
+            self._data["file"],
+        )
         return {}
     """Get next departures from data."""
     schedule = self._data["schedule"]
     offset = self._data["offset"]
     now = dt_util.now().replace(tzinfo=None) + datetime.timedelta(minutes=offset)
-    now_hist_corrected = dt_util.now().replace(tzinfo=None) + datetime.timedelta(minutes=offset) - datetime.timedelta(minutes=DEFAULT_LOCAL_STOP_TIMERANGE)
+    now_hist_corrected = (
+        dt_util.now().replace(tzinfo=None)
+        + datetime.timedelta(minutes=offset)
+        - datetime.timedelta(minutes=DEFAULT_LOCAL_STOP_TIMERANGE)
+    )
     now_date = now.strftime(dt_util.DATE_STR_FORMAT)
     now_time = now.strftime(TIME_STR_FORMAT)
     now_time_hist_corrected = now_hist_corrected.strftime(TIME_STR_FORMAT)
     tomorrow = now + datetime.timedelta(days=1)
-    tomorrow_date = tomorrow.strftime(dt_util.DATE_STR_FORMAT)    
-    device_tracker = self.hass.states.get(self._data['device_tracker_id']) 
+    tomorrow_date = tomorrow.strftime(dt_util.DATE_STR_FORMAT)
+    device_tracker = self.hass.states.get(self._data["device_tracker_id"])
     latitude = device_tracker.attributes.get("latitude", None)
     longitude = device_tracker.attributes.get("longitude", None)
-    include_tomorrow = self._data["include_tomorrow"]    
+    include_tomorrow = self._data["include_tomorrow"]
     tomorrow_select = tomorrow_select2 = tomorrow_where = tomorrow_order = ""
     tomorrow_calendar_date_where = f"AND (calendar_date_today.date = date(:now_offset))"
-    time_range = str('+' + str(self._data.get("timerange", DEFAULT_LOCAL_STOP_TIMERANGE)) + ' minute')
-    time_range_history = str('-' + str(self._data.get("timerange_history", DEFAULT_LOCAL_STOP_TIMERANGE_HISTORY)) + ' minute')
+    time_range = str(
+        "+" + str(self._data.get("timerange", DEFAULT_LOCAL_STOP_TIMERANGE)) + " minute"
+    )
+    time_range_history = str(
+        "-"
+        + str(self._data.get("timerange_history", DEFAULT_LOCAL_STOP_TIMERANGE_HISTORY))
+        + " minute"
+    )
     radius = self._data.get("radius", DEFAULT_LOCAL_STOP_RADIUS) / 111111
     if not latitude or not longitude:
-        _LOGGER.error("No latitude and/or longitude for : %s", self._data['device_tracker_id'])
+        _LOGGER.error(
+            "No latitude and/or longitude for : %s", self._data["device_tracker_id"]
+        )
         return []
     if include_tomorrow:
         _LOGGER.debug("Includes Tomorrow")
         tomorrow_name = tomorrow.strftime("%A").lower()
         tomorrow_select = f"calendar.{tomorrow_name} AS tomorrow,"
         tomorrow_calendar_date_where = f"AND (calendar_date_today.date = date(:now_offset) or calendar_date_today.date = date(:now_offset,'+1 day'))"
-        tomorrow_select2 = f"CASE WHEN date(:now_offset) < calendar_date_today.date THEN '1' else '0' END as tomorrow,"    
-    _LOGGER.debug("Query params: Latitude %s - Longitude %s - Timerange %s - Timerange_history %s - Radius %s - Now: %s", latitude, longitude, time_range, time_range_history, radius, now)
+        tomorrow_select2 = f"CASE WHEN date(:now_offset) < calendar_date_today.date THEN '1' else '0' END as tomorrow,"
+    _LOGGER.debug(
+        "Query params: Latitude %s - Longitude %s - Timerange %s - Timerange_history %s - Radius %s - Now: %s",
+        latitude,
+        longitude,
+        time_range,
+        time_range_history,
+        radius,
+        now,
+    )
     sql_query = f"""
         SELECT * FROM (
         SELECT stop.stop_id, stop.stop_name,stop.stop_lat as latitude, stop.stop_lon as longitude, stop.stop_timezone as stop_timezone, agency.agency_timezone as agency_timezone, trip.trip_id, trip.trip_headsign, trip.direction_id, time(st.departure_time) as departure_time,st.stop_sequence as stop_sequence,
@@ -966,168 +1121,273 @@ def get_local_stops_next_departures(self):
             "timerange": time_range,
             "timerange_history": time_range_history,
             "radius": radius,
-            "now_offset": now
+            "now_offset": now,
         },
-    )        
+    )
     timetable = []
     local_stops_list = []
     prev_stop_id = ""
     prev_entry = entry = {}
-    
+
     # Define timezone
     if self.hass.config.time_zone is None:
         _LOGGER.error("Timezone is not set in Home Assistant configuration, using UTC")
         timezone_local = dt_util.get_time_zone("UTC")
     else:
         timezone_local = dt_util.get_time_zone(self.hass.config.time_zone)
-    _LOGGER.debug("Local timezone: %s",timezone_local)
-    now_tz = dt_util.now().replace(tzinfo=timezone_local) + datetime.timedelta(minutes=offset)        
-    _LOGGER.debug("Default 'now' on local timezone, incl. offset (if configured): %s",now_tz)
+    _LOGGER.debug("Local timezone: %s", timezone_local)
+    now_tz = dt_util.now().replace(tzinfo=timezone_local) + datetime.timedelta(
+        minutes=offset
+    )
+    _LOGGER.debug(
+        "Default 'now' on local timezone, incl. offset (if configured): %s", now_tz
+    )
 
-    
     # Set elements for realtime retrieval via local file.
     if self._realtime:
         self._rt_group = "trip"
         self._rt_data = {
             "url": self._trip_update_url,
-            CONF_API_KEY : self._headers.get(CONF_API_KEY,None),
-            CONF_API_KEY_NAME : self._headers.get(CONF_API_KEY_NAME, None),
-            CONF_API_KEY_LOCATION : self._headers.get(CONF_API_KEY_LOCATION,None),
-            CONF_ACCEPT_HEADER_PB :self._headers.get(CONF_ACCEPT_HEADER_PB,None),
+            CONF_API_KEY: self._headers.get(CONF_API_KEY, None),
+            CONF_API_KEY_NAME: self._headers.get(CONF_API_KEY_NAME, None),
+            CONF_API_KEY_LOCATION: self._headers.get(CONF_API_KEY_LOCATION, None),
+            CONF_ACCEPT_HEADER_PB: self._headers.get(CONF_ACCEPT_HEADER_PB, None),
             "file": self._data["name"] + "_localstop",
-            }
-        _LOGGER.debug("self rt_data: %s, self headers: %s, self data: %s", self._rt_data, self._headers, self._data)
-        check = get_gtfs_rt(self.hass,DEFAULT_PATH_RT,self._rt_data)
+        }
+        _LOGGER.debug(
+            "self rt_data: %s, self headers: %s, self data: %s",
+            self._rt_data,
+            self._headers,
+            self._data,
+        )
+        check = get_gtfs_rt(self.hass, DEFAULT_PATH_RT, self._rt_data)
         # check if local file created
         if check != "ok":
             _LOGGER.error("Could not download RT data from: %s", self._trip_update_url)
             return {}
         else:
             # use local file created as new url
-            self._trip_update_url = "file://" + DEFAULT_PATH_RT + "/" + self._data["name"] + "_localstop.rt"
+            self._trip_update_url = (
+                "file://" + DEFAULT_PATH_RT + "/" + self._data["name"] + "_localstop.rt"
+            )
 
     for row_cursor in result:
         row = row_cursor._asdict()
         _LOGGER.debug("Row from query: %s", row)
-        
-        #defining TZ for row
-        _LOGGER.debug("Configured Agency timezone: %s", row['agency_timezone'])
-        _LOGGER.debug("Configured Stop timezone: %s", row['stop_timezone'])
-        if row['agency_timezone'] is not None:
-            timezone_agency = dt_util.get_time_zone(row['agency_timezone'])
-        elif row['stop_timezone'] is not None:
-            timezone_agency = dt_util.get_time_zone(row['stop_timezone'])
+
+        # defining TZ for row
+        _LOGGER.debug("Configured Agency timezone: %s", row["agency_timezone"])
+        _LOGGER.debug("Configured Stop timezone: %s", row["stop_timezone"])
+        if row["agency_timezone"] is not None:
+            timezone_agency = dt_util.get_time_zone(row["agency_timezone"])
+        elif row["stop_timezone"] is not None:
+            timezone_agency = dt_util.get_time_zone(row["stop_timezone"])
         else:
             timezone_agency = timezone_local
-        if row['stop_timezone'] is not None:
-            timezone_stop = dt_util.get_time_zone(row['stop_timezone'])
+        if row["stop_timezone"] is not None:
+            timezone_stop = dt_util.get_time_zone(row["stop_timezone"])
         else:
             timezone_stop = timezone_local
-        _LOGGER.debug("Using Agency timezone: %s", timezone_agency)            
-        _LOGGER.debug("Using Stop timezone: %s", timezone_stop) 
-                
-        if row["stop_id"] != prev_stop_id and prev_stop_id != "": 
+        _LOGGER.debug("Using Agency timezone: %s", timezone_agency)
+        _LOGGER.debug("Using Stop timezone: %s", timezone_stop)
+
+        if row["stop_id"] != prev_stop_id and prev_stop_id != "":
             local_stops_list.append(prev_entry)
             timetable = []
-             
-        entry = {"stop_id": row['stop_id'], "stop_name": row['stop_name'], "stop_sequence": row['stop_sequence'], "latitude": row['latitude'], "longitude": row['longitude'], "departure": timetable, "offset": offset}
-        self._icon = ICONS.get(row['route_type'], ICON)
-        
-        if row["today"] == 1 or (row["today_cd"] == 1 and row["start_date"] == row["calendar_date"]):
+
+        entry = {
+            "stop_id": row["stop_id"],
+            "stop_name": row["stop_name"],
+            "stop_sequence": row["stop_sequence"],
+            "latitude": row["latitude"],
+            "longitude": row["longitude"],
+            "departure": timetable,
+            "offset": offset,
+        }
+        self._icon = ICONS.get(row["route_type"], ICON)
+
+        if row["today"] == 1 or (
+            row["today_cd"] == 1 and row["start_date"] == row["calendar_date"]
+        ):
             if row["today"] == 1:
                 _LOGGER.debug("Adding row from calendar today=1")
             if row["today_cd"] == 1 and row["start_date"] == row["calendar_date"]:
-                _LOGGER.debug("Adding row from calendar_dates today_cd=1 and start_date = calendar_date")    
+                _LOGGER.debug(
+                    "Adding row from calendar_dates today_cd=1 and start_date = calendar_date"
+                )
             self._trip_id = row["trip_id"]
             self._direction = str(row["direction_id"])
-            self._route = row['route_id']   
-            self._route_id = row['route_id'] 
-            self._stop_id = row['stop_id']
-            self._stop_sequence = row['stop_sequence']
-            _LOGGER.debug("Row departure_time: %s", row["departure_time"])              
+            self._route = row["route_id"]
+            self._route_id = row["route_id"]
+            self._stop_id = row["stop_id"]
+            self._stop_sequence = row["stop_sequence"]
+            _LOGGER.debug("Row departure_time: %s", row["departure_time"])
             # collect departure time from row, using agency timezone as basis, then transforming it to the stop-specific timezone (based on Amtrak)
-            self._departure_datetime = datetime.datetime.strptime(now_date + " " + row["departure_time"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone_agency).astimezone(tz=timezone_stop)
+            self._departure_datetime = (
+                datetime.datetime.strptime(
+                    now_date + " " + row["departure_time"], "%Y-%m-%d %H:%M:%S"
+                )
+                .replace(tzinfo=timezone_agency)
+                .astimezone(tz=timezone_stop)
+            )
             self._departure_datetime_utc = dt_util.as_utc(self._departure_datetime)
-            _LOGGER.debug("Self._departure datetime in agency_tz: %s", self._departure_datetime)
-            self._departure_time = self._departure_datetime.replace(tzinfo=None).strftime(TIME_STR_FORMAT)       
+            _LOGGER.debug(
+                "Self._departure datetime in agency_tz: %s", self._departure_datetime
+            )
+            self._departure_time = self._departure_datetime.replace(
+                tzinfo=None
+            ).strftime(TIME_STR_FORMAT)
             _LOGGER.debug("Self._departure time in stop tz: %s", self._departure_time)
             departure_rt = "-"
-            departure_rt_datetime = '-'
+            departure_rt_datetime = "-"
             delay_rt = "-"
-            delay_rt_derived = '-'
+            delay_rt_derived = "-"
             # Find RT if configured
             if self._realtime:
                 self._get_next_service = {}
-                _LOGGER.debug("Find rt for local stop route: %s - direction: %s - stop: %s - stop_sequence: %s", self._route , self._direction, self._stop_id, self._stop_sequence)
+                _LOGGER.debug(
+                    "Find rt for local stop route: %s - direction: %s - stop: %s - stop_sequence: %s",
+                    self._route,
+                    self._direction,
+                    self._stop_id,
+                    self._stop_sequence,
+                )
                 next_service = get_rt_route_trip_statuses(self)
                 _LOGGER.debug("Next service: %s", next_service)
-                if next_service:                       
-                    delays = next_service.get(self._route, {}).get(self._direction, {}).get(self._stop_id, []).get("delays", [])
-                    departures = next_service.get(self._route, {}).get(self._direction, {}).get(self._stop_id, []).get("departures", [])
+                if next_service:
+                    delays = (
+                        next_service.get(self._route, {})
+                        .get(self._direction, {})
+                        .get(self._stop_id, [])
+                        .get("delays", [])
+                    )
+                    departures = (
+                        next_service.get(self._route, {})
+                        .get(self._direction, {})
+                        .get(self._stop_id, [])
+                        .get("departures", [])
+                    )
                     delay_rt = delays[0] if delays else "-"
                     departure_rt = departures[0] if departures else "-"
                     departure_rt_datetime = departure_rt
-                _LOGGER.debug("Departure rt: %s, Delay rt: %s", departure_rt, delay_rt)   
-            if departure_rt != '-':
+                _LOGGER.debug("Departure rt: %s, Delay rt: %s", departure_rt, delay_rt)
+            if departure_rt != "-":
                 depart_time_corrected_time = departures[0].astimezone(tz=timezone_stop)
-                departure_rt = depart_time_corrected_time.replace(tzinfo=None).strftime(TIME_STR_FORMAT)
+                departure_rt = depart_time_corrected_time.replace(tzinfo=None).strftime(
+                    TIME_STR_FORMAT
+                )
                 td = abs(depart_time_corrected_time - self._departure_datetime)
-                if td.seconds != 0 and depart_time_corrected_time < self._departure_datetime :
-                    delay_rt_derived = '-' + str(td)
-                elif td.seconds != 0: 
+                if (
+                    td.seconds != 0
+                    and depart_time_corrected_time < self._departure_datetime
+                ):
+                    delay_rt_derived = "-" + str(td)
+                elif td.seconds != 0:
                     delay_rt_derived = str(td)
-                _LOGGER.debug("Delay derived: %s, departure_rt: %s", delay_rt_derived,departure_rt) 
-            else: 
-                depart_time_corrected_time = (dt_util.parse_datetime(f"{now_date} {self._departure_time}")).replace(tzinfo=timezone_stop)
-            _LOGGER.debug("Departure time corrected based on realtime-time: %s", depart_time_corrected_time)    
-            if delay_rt != '-' and delay_rt != 0 :
-                depart_time_corrected_delay = (dt_util.parse_datetime(f"{now_date} {self._departure_time}") + datetime.timedelta(seconds=delay_rt)).replace(tzinfo=timezone_stop)
+                _LOGGER.debug(
+                    "Delay derived: %s, departure_rt: %s",
+                    delay_rt_derived,
+                    departure_rt,
+                )
             else:
-                delay_rt = '-'
-                depart_time_corrected_delay = dt_util.parse_datetime(f"{now_date} {self._departure_time}").replace(tzinfo=timezone_stop)                
-            _LOGGER.debug("Departure time corrected based on realtime-delay: %s", depart_time_corrected_delay)   
+                depart_time_corrected_time = (
+                    dt_util.parse_datetime(f"{now_date} {self._departure_time}")
+                ).replace(tzinfo=timezone_stop)
+            _LOGGER.debug(
+                "Departure time corrected based on realtime-time: %s",
+                depart_time_corrected_time,
+            )
+            if delay_rt != "-" and delay_rt != 0:
+                depart_time_corrected_delay = (
+                    dt_util.parse_datetime(f"{now_date} {self._departure_time}")
+                    + datetime.timedelta(seconds=delay_rt)
+                ).replace(tzinfo=timezone_stop)
+            else:
+                delay_rt = "-"
+                depart_time_corrected_delay = dt_util.parse_datetime(
+                    f"{now_date} {self._departure_time}"
+                ).replace(tzinfo=timezone_stop)
+            _LOGGER.debug(
+                "Departure time corrected based on realtime-delay: %s",
+                depart_time_corrected_delay,
+            )
 
-            if depart_time_corrected_delay > depart_time_corrected_time: 
+            if depart_time_corrected_delay > depart_time_corrected_time:
                 depart_time_corrected = depart_time_corrected_delay
             else:
                 depart_time_corrected = depart_time_corrected_time
-            _LOGGER.debug("Departure time corrected: %s", depart_time_corrected_delay)   
+            _LOGGER.debug("Departure time corrected: %s", depart_time_corrected_delay)
 
-            if depart_time_corrected > now_tz: 
-                _LOGGER.debug("Departure time corrected: %s, after now in tz with offset: %s", depart_time_corrected, now_tz)
-                element = {"departure": self._departure_time, "departure_datetime": self._departure_datetime_utc, "departure_realtime": departure_rt, "departure_realtime_datetime": departure_rt_datetime, "delay_realtime_derived": delay_rt_derived, "delay_realtime": delay_rt, "date": now_date, "stop_name": row['stop_name'], "route": row["route_short_name"], "route_long": row["route_long_name"], "headsign": row["trip_headsign"], "trip_id": row["trip_id"], "direction_id": row["direction_id"], "icon": self._icon}
-                if element not in timetable: 
+            if depart_time_corrected > now_tz:
+                _LOGGER.debug(
+                    "Departure time corrected: %s, after now in tz with offset: %s",
+                    depart_time_corrected,
+                    now_tz,
+                )
+                element = {
+                    "departure": self._departure_time,
+                    "departure_datetime": self._departure_datetime_utc,
+                    "departure_realtime": departure_rt,
+                    "departure_realtime_datetime": departure_rt_datetime,
+                    "delay_realtime_derived": delay_rt_derived,
+                    "delay_realtime": delay_rt,
+                    "date": now_date,
+                    "stop_name": row["stop_name"],
+                    "route": row["route_short_name"],
+                    "route_long": row["route_long_name"],
+                    "headsign": row["trip_headsign"],
+                    "trip_id": row["trip_id"],
+                    "direction_id": row["direction_id"],
+                    "icon": self._icon,
+                }
+                if element not in timetable:
                     timetable.append(element)
                 _LOGGER.debug("Timetable: %s", timetable)
-        
-        if (row["tomorrow"] == '1' or row["tomorrow"] == 1) and (datetime.datetime.strptime(now_time_hist_corrected,"%H:%M") > datetime.datetime.strptime(row["departure_time"],"%H:%M:%S")):
+
+        if (row["tomorrow"] == "1" or row["tomorrow"] == 1) and (
+            datetime.datetime.strptime(now_time_hist_corrected, "%H:%M")
+            > datetime.datetime.strptime(row["departure_time"], "%H:%M:%S")
+        ):
             _LOGGER.debug("Tomorrow: adding row")
-            element = {"departure": self._departure_time, "departure_datetime": self._departure_datetime_utc, "departure_realtime": "tomorrow", "departure_realtime_datetime": "tomorrow", "delay_realtime_derived": "tomorrow", "delay_realtime": "tomorrow",  "date": tomorrow_date, "stop_name": row['stop_name'], "route": row["route_short_name"], "route_long": row["route_long_name"], "headsign": row["trip_headsign"], "trip_id": row["trip_id"], "direction_id": row["direction_id"], "icon": self._icon}
-            if element not in timetable: 
+            element = {
+                "departure": self._departure_time,
+                "departure_datetime": self._departure_datetime_utc,
+                "departure_realtime": "tomorrow",
+                "departure_realtime_datetime": "tomorrow",
+                "delay_realtime_derived": "tomorrow",
+                "delay_realtime": "tomorrow",
+                "date": tomorrow_date,
+                "stop_name": row["stop_name"],
+                "route": row["route_short_name"],
+                "route_long": row["route_long_name"],
+                "headsign": row["trip_headsign"],
+                "trip_id": row["trip_id"],
+                "direction_id": row["direction_id"],
+                "icon": self._icon,
+            }
+            if element not in timetable:
                 timetable.append(element)
             _LOGGER.debug("Timetable: %s", timetable)
-        
+
         prev_entry = entry.copy()
         prev_stop_id = str(row["stop_id"])
-        entry["departure"] = timetable         
+        entry["departure"] = timetable
 
-
-    if entry:      
+    if entry:
         local_stops_list.append(entry)
 
-    data_returned = local_stops_list   
+    data_returned = local_stops_list
     _LOGGER.debug("Stop data returned: %s", data_returned)
     return data_returned
-    
-async def update_gtfs_local_stops(hass, data): 
+
+
+async def update_gtfs_local_stops(hass, data):
     _LOGGER.debug("Update service for local stops with data: %s", data)
     entries = []
     for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.data.get("device_tracker_id") == data["entity_id"] :
+        if entry.data.get("device_tracker_id") == data["entity_id"]:
             entries.append(entry.entry_id)
     for cf_entry in entries:
-        _LOGGER.debug("Reloading local stops for config_entry_id: %s", cf_entry) 
-        reload = await hass.config_entries.async_reload(cf_entry)    
+        _LOGGER.debug("Reloading local stops for config_entry_id: %s", cf_entry)
+        reload = await hass.config_entries.async_reload(cf_entry)
     return
-    
- 

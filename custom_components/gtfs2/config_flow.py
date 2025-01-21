@@ -12,22 +12,22 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
 from .const import (
-    DEFAULT_PATH, 
-    DOMAIN, 
+    DEFAULT_PATH,
+    DOMAIN,
     DEFAULT_API_KEY_LOCATION,
-    DEFAULT_REFRESH_INTERVAL, 
+    DEFAULT_REFRESH_INTERVAL,
     DEFAULT_LOCAL_STOP_REFRESH_INTERVAL,
     DEFAULT_LOCAL_STOP_TIMERANGE,
     DEFAULT_LOCAL_STOP_RADIUS,
     DEFAULT_MAX_LOCAL_STOPS,
     DEFAULT_OFFSET,
-    CONF_API_KEY_LOCATION, 
+    CONF_API_KEY_LOCATION,
     CONF_API_KEY,
     CONF_API_KEY_NAME,
     CONF_ACCEPT_HEADER_PB,
     DEFAULT_ACCEPT_HEADER_PB,
     DEFAULT_API_KEY_NAME,
-    CONF_VEHICLE_POSITION_URL, 
+    CONF_VEHICLE_POSITION_URL,
     CONF_TRIP_UPDATE_URL,
     CONF_ALERTS_URL,
     CONF_URL,
@@ -49,8 +49,8 @@ from .const import (
     CONF_OFFSET,
     CONF_REAL_TIME,
     CONF_SOURCE_TIMEZONE_CORRECTION,
-    ATTR_API_KEY_LOCATIONS
-)    
+    ATTR_API_KEY_LOCATIONS,
+)
 
 from .gtfs_helper import (
     get_gtfs,
@@ -61,10 +61,11 @@ from .gtfs_helper import (
     remove_datasource,
     check_datasource_index,
     get_agency_list,
-    get_local_stop_list
+    get_local_stop_list,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
 
 @config_entries.HANDLERS.register(DOMAIN)
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -81,18 +82,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict | None = None) -> FlowResult:
         """Handle the source."""
         errors: dict[str, str] = {}
-        
+
         return self.async_show_menu(
             step_id="user",
-            menu_options=["start_end", "local_stops", "source","remove"],
+            menu_options=["start_end", "local_stops", "source", "remove"],
             description_placeholders={
                 "model": "Example model",
-            }
+            },
         )
-                   
+
     async def async_step_start_end(self, user_input: dict | None = None) -> FlowResult:
         """Handle the source."""
-        errors: dict[str, str] = {}      
+        errors: dict[str, str] = {}
         if user_input is None:
             datasources = await get_datasources(self.hass, DEFAULT_PATH)
             return self.async_show_form(
@@ -108,11 +109,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input[CONF_EXTRACT_FROM] = "zip"
         self._user_inputs.update(user_input)
         _LOGGER.debug(f"UserInputs Start End: {self._user_inputs}")
-        return await self.async_step_agency()            
-            
-    async def async_step_local_stops(self, user_input: dict | None = None) -> FlowResult:
+        return await self.async_step_agency()
+
+    async def async_step_local_stops(
+        self, user_input: dict | None = None
+    ) -> FlowResult:
         """Handle the source."""
-        errors: dict[str, str] = {}       
+        errors: dict[str, str] = {}
         if user_input is None:
             datasources = await get_datasources(self.hass, DEFAULT_PATH)
             return self.async_show_form(
@@ -121,25 +124,25 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     {
                         vol.Required(CONF_FILE, default=""): vol.In(datasources),
                         vol.Required(CONF_DEVICE_TRACKER_ID): selector.EntitySelector(
-                            selector.EntitySelectorConfig(domain=["person","zone"]),                          
+                            selector.EntitySelectorConfig(domain=["person", "zone"]),
                         ),
-                        vol.Required(CONF_NAME): str, 
+                        vol.Required(CONF_NAME): str,
                     },
                 ),
-            ) 
+            )
         user_input[CONF_URL] = "na"
-        user_input[CONF_EXTRACT_FROM] = "zip"    
+        user_input[CONF_EXTRACT_FROM] = "zip"
         self._user_inputs.update(user_input)
-        _LOGGER.debug(f"UserInputs Local Stops: {self._user_inputs}") 
+        _LOGGER.debug(f"UserInputs Local Stops: {self._user_inputs}")
         check_data = await self._check_data(self._user_inputs)
-        if check_data :
+        if check_data:
             errors["base"] = check_data
             return self.async_abort(reason=check_data)
         else:
             return self.async_create_entry(
                 title=user_input[CONF_NAME], data=self._user_inputs
-                )                
-                   
+            )
+
     async def async_step_source(self, user_input: dict | None = None) -> FlowResult:
         """Handle a flow initialized by the user."""
         errors: dict[str, str] = {}
@@ -174,13 +177,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors=errors,
             )
         check_data = await self._check_data(user_input)
-        if check_data :
+        if check_data:
             errors["base"] = check_data
             return self.async_abort(reason=check_data)
         else:
             self._user_inputs.update(user_input)
             _LOGGER.debug(f"UserInputs Source: {self._user_inputs}")
-            return await self.async_step_agency()            
+            return await self.async_step_agency()
 
     async def async_step_remove(self, user_input: dict | None = None) -> FlowResult:
         """Handle a flow initialized by the user."""
@@ -197,13 +200,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors=errors,
             )
         try:
-            removed = remove_datasource(self.hass, DEFAULT_PATH, user_input[CONF_FILE], True)
+            removed = remove_datasource(
+                self.hass, DEFAULT_PATH, user_input[CONF_FILE], True
+            )
             _LOGGER.debug(f"Removed gtfs data source: {removed}")
         except Exception as ex:
             _LOGGER.error("Error while deleting : %s", {ex})
             return "generic_failure"
         return self.async_abort(reason="files_deleted")
-        
+
     async def async_step_agency(self, user_input: dict | None = None) -> FlowResult:
         """Handle the agency."""
         errors: dict[str, str] = {}
@@ -214,7 +219,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             False,
         )
         check_data = await self._check_data(self._user_inputs)
-        if check_data :
+        if check_data:
             errors["base"] = check_data
             return self.async_abort(reason=check_data)
         agencies = get_agency_list(self._pygtfs, self._user_inputs)
@@ -230,14 +235,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         },
                     ),
                     errors=errors,
-                ) 
+                )
         else:
             user_input = {}
             user_input[CONF_AGENCY] = "0: ALL"
         self._user_inputs.update(user_input)
         _LOGGER.debug(f"UserInputs Agency: {self._user_inputs}")
-        return await self.async_step_route_type()          
-        
+        return await self.async_step_route_type()
+
     async def async_step_route_type(self, user_input: dict | None = None) -> FlowResult:
         """Handle the dummy route_type to split between train (different mechanism) and rest."""
         errors: dict[str, str] = {}
@@ -246,24 +251,28 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="route_type",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_ROUTE_TYPE): selector.SelectSelector(selector.SelectSelectorConfig(options=["99", "2"], translation_key="route_type")),
+                        vol.Required(CONF_ROUTE_TYPE): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=["99", "2"], translation_key="route_type"
+                            )
+                        ),
                     },
                 ),
                 errors=errors,
-            )                
+            )
         self._user_inputs.update(user_input)
         _LOGGER.debug(f"UserInputs Route Type: {self._user_inputs}")
         if user_input[CONF_ROUTE_TYPE] == "2":
             return await self.async_step_stops_train()
         else:
-            return await self.async_step_route()          
+            return await self.async_step_route()
 
     async def async_step_route(self, user_input: dict | None = None) -> FlowResult:
         """Handle the route and reset the route_type to the proper one."""
         errors: dict[str, str] = {}
         check_data = await self._check_data(self._user_inputs)
         _LOGGER.debug("Source check data: %s", check_data)
-        if check_data :
+        if check_data:
             errors["base"] = check_data
             return self.async_abort(reason=check_data)
         self._pygtfs = get_gtfs(
@@ -274,22 +283,32 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         if user_input is None:
             route_list = [
-                selector.SelectOptionDict(value=r, label=r.split('#')[1])
+                selector.SelectOptionDict(value=r, label=r.split("#")[1])
                 for r in get_route_list(self._pygtfs, self._user_inputs)
-                ]
+            ]
             return self.async_show_form(
                 step_id="route",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_ROUTE, default = ""): selector.SelectSelector(selector.SelectSelectorConfig(options=route_list, translation_key="route",custom_value=True)),
-                        vol.Required(CONF_DIRECTION): selector.SelectSelector(selector.SelectSelectorConfig(options=["0", "1"], translation_key="direction")),
+                        vol.Required(CONF_ROUTE, default=""): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=route_list,
+                                translation_key="route",
+                                custom_value=True,
+                            )
+                        ),
+                        vol.Required(CONF_DIRECTION): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=["0", "1"], translation_key="direction"
+                            )
+                        ),
                     },
                 ),
                 errors=errors,
             )
-        user_input[CONF_ROUTE_TYPE] = user_input.get(CONF_ROUTE).split('#')[0] 
-        user_input[CONF_ROUTE] = user_input.get(CONF_ROUTE).split('#')[1].split(":")[0]   
-               
+        user_input[CONF_ROUTE_TYPE] = user_input.get(CONF_ROUTE).split("#")[0]
+        user_input[CONF_ROUTE] = user_input.get(CONF_ROUTE).split("#")[1].split(":")[0]
+
         self._user_inputs.update(user_input)
         _LOGGER.debug(f"UserInputs Route: {self._user_inputs}")
         return await self.async_step_stops()
@@ -310,9 +329,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data_schema=vol.Schema(
                         {
                             vol.Required(CONF_ORIGIN): vol.In(stops),
-                            vol.Required(CONF_DESTINATION, default=last_stop): vol.In(stops),
+                            vol.Required(CONF_DESTINATION, default=last_stop): vol.In(
+                                stops
+                            ),
                             vol.Required(CONF_NAME): str,
-                            vol.Optional(CONF_INCLUDE_TOMORROW, default = False): selector.BooleanSelector(),
+                            vol.Optional(
+                                CONF_INCLUDE_TOMORROW, default=False
+                            ): selector.BooleanSelector(),
                         },
                     ),
                     errors=errors,
@@ -329,8 +352,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=user_input[CONF_NAME], data=self._user_inputs
             )
-            
-    async def async_step_stops_retry(self, user_input: dict | None = None) -> FlowResult:
+
+    async def async_step_stops_retry(
+        self, user_input: dict | None = None
+    ) -> FlowResult:
         """Handle the route step."""
         errors: dict[str, str] = {}
         if user_input is None:
@@ -345,10 +370,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     step_id="stops_retry",
                     data_schema=vol.Schema(
                         {
-                            vol.Required(CONF_ORIGIN, default = self._user_inputs[CONF_ORIGIN]): vol.In(stops),
-                            vol.Required(CONF_DESTINATION, default = self._user_inputs[CONF_DESTINATION]): vol.In(stops),
+                            vol.Required(
+                                CONF_ORIGIN, default=self._user_inputs[CONF_ORIGIN]
+                            ): vol.In(stops),
+                            vol.Required(
+                                CONF_DESTINATION,
+                                default=self._user_inputs[CONF_DESTINATION],
+                            ): vol.In(stops),
                             vol.Required(CONF_NAME): str,
-                            vol.Optional(CONF_INCLUDE_TOMORROW, default = False): selector.BooleanSelector(),
+                            vol.Optional(
+                                CONF_INCLUDE_TOMORROW, default=False
+                            ): selector.BooleanSelector(),
                         },
                     ),
                     errors=errors,
@@ -364,9 +396,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             return self.async_create_entry(
                 title=user_input[CONF_NAME], data=self._user_inputs
-            )            
-            
-    async def async_step_stops_train(self, user_input: dict | None = None) -> FlowResult:
+            )
+
+    async def async_step_stops_train(
+        self, user_input: dict | None = None
+    ) -> FlowResult:
         """Handle the stops when train, as often impossible to select ID"""
         errors: dict[str, str] = {}
         if user_input is None:
@@ -377,7 +411,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         vol.Required(CONF_ORIGIN): str,
                         vol.Required(CONF_DESTINATION): str,
                         vol.Required(CONF_NAME): str,
-                        vol.Optional(CONF_INCLUDE_TOMORROW, default = False): selector.BooleanSelector(),
+                        vol.Optional(
+                            CONF_INCLUDE_TOMORROW, default=False
+                        ): selector.BooleanSelector(),
                     },
                 ),
                 errors=errors,
@@ -394,20 +430,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             return self.async_create_entry(
                 title=user_input[CONF_NAME], data=self._user_inputs
-            )            
+            )
 
     async def _check_data(self, data):
         self._pygtfs = await self.hass.async_add_executor_job(
             get_gtfs, self.hass, DEFAULT_PATH, data, False
         )
         _LOGGER.debug("Checkdata pygtfs: %s with data: %s", self._pygtfs, data)
-        if self._pygtfs in ['no_data_file', 'no_zip_file', 'extracting'] :
+        if self._pygtfs in ["no_data_file", "no_zip_file", "extracting"]:
             return self._pygtfs
         check_index = await self.hass.async_add_executor_job(
-                    check_datasource_index, self.hass, self._pygtfs, DEFAULT_PATH, data["file"]
-                )            
+            check_datasource_index, self.hass, self._pygtfs, DEFAULT_PATH, data["file"]
+        )
         return None
-        
+
     async def _check_config(self, data):
         self._pygtfs = await self.hass.async_add_executor_job(
             get_gtfs, self.hass, DEFAULT_PATH, data, False
@@ -424,12 +460,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "name": data["name"],
             "next_departure": None,
             "file": data["file"],
-            "route_type": data["route_type"]
+            "route_type": data["route_type"],
         }
         # check and/or add indexes
         check_index = await self.hass.async_add_executor_job(
-                    check_datasource_index, self.hass, self._pygtfs, DEFAULT_PATH, data["file"]
-                )
+            check_datasource_index, self.hass, self._pygtfs, DEFAULT_PATH, data["file"]
+        )
         try:
             self._data["next_departure"] = await self.hass.async_add_executor_job(
                 get_next_departure, self
@@ -475,45 +511,84 @@ class GTFSOptionsFlowHandler(config_entries.OptionsFlow):
                 _data["device_tracker_id"] = self.config_entry.data["device_tracker_id"]
                 _data["radius"] = user_input["radius"]
                 stop_limit = await _check_stop_list(self, _data)
-                if stop_limit :
-                    return self.async_abort(reason=stop_limit) 
-            if user_input.get(CONF_REAL_TIME,None):
+                if stop_limit:
+                    return self.async_abort(reason=stop_limit)
+            if user_input.get(CONF_REAL_TIME, None):
                 self._user_inputs.update(user_input)
-                _LOGGER.debug(f"UserInputs Options Init with realtime: {self._user_inputs}")
-                return await self.async_step_real_time()    
-            else: 
+                _LOGGER.debug(
+                    f"UserInputs Options Init with realtime: {self._user_inputs}"
+                )
+                return await self.async_step_real_time()
+            else:
                 self._user_inputs.update(user_input)
-                _LOGGER.debug(f"UserInputs Options Init without realtime: {self._user_inputs}")
+                _LOGGER.debug(
+                    f"UserInputs Options Init without realtime: {self._user_inputs}"
+                )
                 return self.async_create_entry(title="", data=self._user_inputs)
-        
+
         if self.config_entry.data.get(CONF_DEVICE_TRACKER_ID, None):
             opt1_schema = {
-                    vol.Optional(CONF_LOCAL_STOP_REFRESH_INTERVAL, default=self.config_entry.options.get(CONF_LOCAL_STOP_REFRESH_INTERVAL, DEFAULT_LOCAL_STOP_REFRESH_INTERVAL)): int,
-                    vol.Optional(CONF_RADIUS, default=self.config_entry.options.get(CONF_RADIUS, DEFAULT_LOCAL_STOP_RADIUS)): vol.All(vol.Coerce(int), vol.Range(min=50, max=5000)),
-                    vol.Optional(CONF_TIMERANGE, default=self.config_entry.options.get(CONF_TIMERANGE, DEFAULT_LOCAL_STOP_TIMERANGE)): vol.All(vol.Coerce(int), vol.Range(min=15, max=120)),
-                    vol.Optional(CONF_OFFSET, default=self.config_entry.options.get(CONF_OFFSET, DEFAULT_OFFSET)): int,
-                    vol.Optional(CONF_REAL_TIME, default=self.config_entry.options.get(CONF_REAL_TIME)): selector.BooleanSelector()
-                }
+                vol.Optional(
+                    CONF_LOCAL_STOP_REFRESH_INTERVAL,
+                    default=self.config_entry.options.get(
+                        CONF_LOCAL_STOP_REFRESH_INTERVAL,
+                        DEFAULT_LOCAL_STOP_REFRESH_INTERVAL,
+                    ),
+                ): int,
+                vol.Optional(
+                    CONF_RADIUS,
+                    default=self.config_entry.options.get(
+                        CONF_RADIUS, DEFAULT_LOCAL_STOP_RADIUS
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=50, max=5000)),
+                vol.Optional(
+                    CONF_TIMERANGE,
+                    default=self.config_entry.options.get(
+                        CONF_TIMERANGE, DEFAULT_LOCAL_STOP_TIMERANGE
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=15, max=120)),
+                vol.Optional(
+                    CONF_OFFSET,
+                    default=self.config_entry.options.get(CONF_OFFSET, DEFAULT_OFFSET),
+                ): int,
+                vol.Optional(
+                    CONF_REAL_TIME,
+                    default=self.config_entry.options.get(CONF_REAL_TIME),
+                ): selector.BooleanSelector(),
+            }
             return self.async_show_form(
-                step_id="init",
-                data_schema=vol.Schema(opt1_schema),
-                errors = errors
-            )                
-        
+                step_id="init", data_schema=vol.Schema(opt1_schema), errors=errors
+            )
+
         else:
             opt1_schema = {
-                        vol.Optional(CONF_REFRESH_INTERVAL, default=self.config_entry.options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL)): int,
-                        vol.Optional(CONF_OFFSET, default=self.config_entry.options.get(CONF_OFFSET, DEFAULT_OFFSET)): int,
-                        vol.Optional(CONF_SOURCE_TIMEZONE_CORRECTION, default=self.config_entry.options.get(CONF_SOURCE_TIMEZONE_CORRECTION, 0)): int,
-                        vol.Optional(CONF_REAL_TIME, default=self.config_entry.options.get(CONF_REAL_TIME)): selector.BooleanSelector()
-                    }
+                vol.Optional(
+                    CONF_REFRESH_INTERVAL,
+                    default=self.config_entry.options.get(
+                        CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL
+                    ),
+                ): int,
+                vol.Optional(
+                    CONF_OFFSET,
+                    default=self.config_entry.options.get(CONF_OFFSET, DEFAULT_OFFSET),
+                ): int,
+                vol.Optional(
+                    CONF_SOURCE_TIMEZONE_CORRECTION,
+                    default=self.config_entry.options.get(
+                        CONF_SOURCE_TIMEZONE_CORRECTION, 0
+                    ),
+                ): int,
+                vol.Optional(
+                    CONF_REAL_TIME,
+                    default=self.config_entry.options.get(CONF_REAL_TIME),
+                ): selector.BooleanSelector(),
+            }
             return self.async_show_form(
-                step_id="init",
-                data_schema=vol.Schema(opt1_schema)
+                step_id="init", data_schema=vol.Schema(opt1_schema)
             )
-        
+
     async def async_step_real_time(
-           self, user_input: dict[str, Any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle a realtime initialized by the user."""
         errors: dict[str, str] = {}
@@ -527,41 +602,102 @@ class GTFSOptionsFlowHandler(config_entries.OptionsFlow):
                 step_id="real_time",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_TRIP_UPDATE_URL, default=self.config_entry.options.get(CONF_TRIP_UPDATE_URL)): str,
-                        vol.Optional(CONF_API_KEY, default=self.config_entry.options.get(CONF_API_KEY)) : str,
-                        vol.Optional(CONF_API_KEY_NAME, default=self.config_entry.options.get(CONF_API_KEY_NAME,DEFAULT_API_KEY_NAME)) : str,
-                        vol.Required(CONF_API_KEY_LOCATION, default=self.config_entry.options.get(CONF_API_KEY_LOCATION,DEFAULT_API_KEY_LOCATION)) : selector.SelectSelector(selector.SelectSelectorConfig(options=ATTR_API_KEY_LOCATIONS, translation_key="api_key_location")),
-                        vol.Optional(CONF_ACCEPT_HEADER_PB, default = self.config_entry.options.get(CONF_ACCEPT_HEADER_PB,False)): selector.BooleanSelector(),
+                        vol.Required(
+                            CONF_TRIP_UPDATE_URL,
+                            default=self.config_entry.options.get(CONF_TRIP_UPDATE_URL),
+                        ): str,
+                        vol.Optional(
+                            CONF_API_KEY,
+                            default=self.config_entry.options.get(CONF_API_KEY),
+                        ): str,
+                        vol.Optional(
+                            CONF_API_KEY_NAME,
+                            default=self.config_entry.options.get(
+                                CONF_API_KEY_NAME, DEFAULT_API_KEY_NAME
+                            ),
+                        ): str,
+                        vol.Required(
+                            CONF_API_KEY_LOCATION,
+                            default=self.config_entry.options.get(
+                                CONF_API_KEY_LOCATION, DEFAULT_API_KEY_LOCATION
+                            ),
+                        ): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=ATTR_API_KEY_LOCATIONS,
+                                translation_key="api_key_location",
+                            )
+                        ),
+                        vol.Optional(
+                            CONF_ACCEPT_HEADER_PB,
+                            default=self.config_entry.options.get(
+                                CONF_ACCEPT_HEADER_PB, False
+                            ),
+                        ): selector.BooleanSelector(),
                     },
                 ),
                 errors=errors,
-            )  
+            )
         else:
             return self.async_show_form(
                 step_id="real_time",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_TRIP_UPDATE_URL, default=self.config_entry.options.get(CONF_TRIP_UPDATE_URL)): str,
-                        vol.Optional(CONF_VEHICLE_POSITION_URL, default=self.config_entry.options.get(CONF_VEHICLE_POSITION_URL,"")): str,
-                        vol.Optional(CONF_ALERTS_URL, default=self.config_entry.options.get(CONF_ALERTS_URL,"")): str,
-                        vol.Optional(CONF_API_KEY, default=self.config_entry.options.get(CONF_API_KEY)) : str,
-                        vol.Optional(CONF_API_KEY_NAME, default=self.config_entry.options.get(CONF_API_KEY_NAME,DEFAULT_API_KEY_NAME)) : str,
-                        vol.Required(CONF_API_KEY_LOCATION, default=self.config_entry.options.get(CONF_API_KEY_LOCATION,DEFAULT_API_KEY_LOCATION)) : selector.SelectSelector(selector.SelectSelectorConfig(options=ATTR_API_KEY_LOCATIONS, translation_key="api_key_location")),
-                        vol.Optional(CONF_ACCEPT_HEADER_PB, default = self.config_entry.options.get(CONF_ACCEPT_HEADER_PB,False)): selector.BooleanSelector(),
+                        vol.Required(
+                            CONF_TRIP_UPDATE_URL,
+                            default=self.config_entry.options.get(CONF_TRIP_UPDATE_URL),
+                        ): str,
+                        vol.Optional(
+                            CONF_VEHICLE_POSITION_URL,
+                            default=self.config_entry.options.get(
+                                CONF_VEHICLE_POSITION_URL, ""
+                            ),
+                        ): str,
+                        vol.Optional(
+                            CONF_ALERTS_URL,
+                            default=self.config_entry.options.get(CONF_ALERTS_URL, ""),
+                        ): str,
+                        vol.Optional(
+                            CONF_API_KEY,
+                            default=self.config_entry.options.get(CONF_API_KEY),
+                        ): str,
+                        vol.Optional(
+                            CONF_API_KEY_NAME,
+                            default=self.config_entry.options.get(
+                                CONF_API_KEY_NAME, DEFAULT_API_KEY_NAME
+                            ),
+                        ): str,
+                        vol.Required(
+                            CONF_API_KEY_LOCATION,
+                            default=self.config_entry.options.get(
+                                CONF_API_KEY_LOCATION, DEFAULT_API_KEY_LOCATION
+                            ),
+                        ): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=ATTR_API_KEY_LOCATIONS,
+                                translation_key="api_key_location",
+                            )
+                        ),
+                        vol.Optional(
+                            CONF_ACCEPT_HEADER_PB,
+                            default=self.config_entry.options.get(
+                                CONF_ACCEPT_HEADER_PB, False
+                            ),
+                        ): selector.BooleanSelector(),
                     },
                 ),
                 errors=errors,
-            )      
-    
+            )
+
+
 async def _check_stop_list(self, data):
     _LOGGER.debug("Checkstops option with data: %s", data)
     self._pygtfs = await self.hass.async_add_executor_job(
         get_gtfs, self.hass, DEFAULT_PATH, data, False
     )
     count_stops = await self.hass.async_add_executor_job(
-                get_local_stop_list, self.hass, self._pygtfs, data
-            )  
+        get_local_stop_list, self.hass, self._pygtfs, data
+    )
     if count_stops > DEFAULT_MAX_LOCAL_STOPS:
         _LOGGER.debug("Checkstops limit reached with: %s", count_stops)
         return "stop_limit_reached"
-    return None         
+    return None
