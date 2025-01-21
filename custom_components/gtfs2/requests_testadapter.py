@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2013 by Łukasz Langa
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -44,9 +44,9 @@ class Resp(BytesIO):
     def __init__(self, stream, status=200, headers=None):
         self.status = status
         self.headers = headers or {}
-        self.reason = requests.status_codes._codes.get(
-            status, ['']
-        )[0].upper().replace('_', ' ')
+        self.reason = (
+            requests.status_codes._codes.get(status, [""])[0].upper().replace("_", " ")
+        )
         BytesIO.__init__(self, stream)
 
     @property
@@ -83,8 +83,9 @@ class TestAdapter(requests.adapters.HTTPAdapter):
         self.headers = headers or {}
         super(TestAdapter, self).__init__()
 
-    def send(self, request, stream=False, timeout=None,
-             verify=True, cert=None, proxies=None):
+    def send(
+        self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None
+    ):
         resp = Resp(self.stream, self.status, self.headers)
         r = self.build_response(request, resp)
         if not stream:
@@ -95,9 +96,9 @@ class TestAdapter(requests.adapters.HTTPAdapter):
 
 class TestSession(requests.Session):
     """Just like requests.Session but solves an issue with adapter ordering
-       for requests 1.2.0 and lower. It also doesn't connect the default
-       handlers for HTTP and HTTPS so you will be notified if your requests
-       unintentionally try to reach external websites in your unit tests."""
+    for requests 1.2.0 and lower. It also doesn't connect the default
+    handlers for HTTP and HTTPS so you will be notified if your requests
+    unintentionally try to reach external websites in your unit tests."""
 
     def __init__(self):
         super(TestSession, self).__init__()

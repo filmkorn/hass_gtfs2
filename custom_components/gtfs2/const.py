@@ -26,8 +26,8 @@ CONF_TOMORROW = "include_tomorrow"
 PLATFORMS = [Platform.SENSOR]
 
 # constants used in helpers
-ATTR_API_KEY_LOCATIONS = ["not_applicable","header","query_string"]
-ATTR_API_KEY_NAMES = ["api_key","x_api_key", "apiKey","Ocp-Apim-Subscription-Key"]
+ATTR_API_KEY_LOCATIONS = ["not_applicable", "header", "query_string"]
+ATTR_API_KEY_NAMES = ["api_key", "x_api_key", "apiKey", "Ocp-Apim-Subscription-Key"]
 ATTR_ARRIVAL = "arrival"
 ATTR_BICYCLE = "trip_bikes_allowed_state"
 ATTR_DAY = "day"
@@ -51,7 +51,7 @@ ATTR_WHEELCHAIR_ORIGIN = "origin_station_wheelchair_boarding_available"
 ATTR_TIMEZONE_ORIGIN = "origin_station_time_zone"
 ATTR_TIMEZONE_DESTINATION = "destination_station_time_zone"
 
-#gtfs_rt
+# gtfs_rt
 ATTR_STOP_ID = "Stop ID"
 ATTR_ROUTE = "Route"
 ATTR_TRIP = "Trip"
@@ -308,5 +308,3 @@ DEFAULT_DIRECTION = "0"
 DEFAULT_API_KEY_NAME = "api_key"
 
 TIME_STR_FORMAT = "%H:%M"
-
-
